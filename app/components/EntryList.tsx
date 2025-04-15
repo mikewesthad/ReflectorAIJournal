@@ -65,13 +65,13 @@ export default function EntryList({
                   {entry.reflectionQuestions ? "Regenerate" : "Generate"}
                 </button>
               </div>
-              {entry.reflectionQuestions && (
+              {entry.reflectionQuestions ? (
                 <ul className="list-disc list-inside text-sm text-gray-600">
                   {entry.reflectionQuestions.map((question, index) => (
                     <li key={index}>{question}</li>
                   ))}
                 </ul>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

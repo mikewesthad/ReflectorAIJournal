@@ -57,9 +57,9 @@ export default function EntryEditor({
             <span className="text-sm text-gray-500">
               {wordCount} {wordCount === 1 ? "word" : "words"}
             </span>
-            {lastSaved && (
+            {lastSaved ? (
               <span className="text-sm text-gray-500">Saved {formatTimestamp(lastSaved)}</span>
-            )}
+            ) : null}
           </div>
         </div>
         <textarea

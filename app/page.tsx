@@ -92,12 +92,12 @@ export default function Home() {
           </div>
         </div>
 
-        {trendsSummary && (
+        {trendsSummary ? (
           <div className="mb-8 p-4 bg-white rounded-lg shadow">
             <h2 className="text-lg font-semibold text-gray-800 mb-2">Trends & Insights</h2>
             <p className="text-gray-600">{trendsSummary}</p>
           </div>
-        )}
+        ) : null}
 
         {isLoading ? (
           <div className="flex justify-center items-center h-32">

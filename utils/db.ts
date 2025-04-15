@@ -3,6 +3,8 @@
  * backend.
  */
 
+import { z } from "zod";
+
 export interface JournalEntry {
   id: string;
   content: string;
@@ -112,6 +114,85 @@ export async function deleteEntry(id: string): Promise<void> {
     const transaction = db.transaction(STORE_NAME, "readwrite");
     const store = transaction.objectStore(STORE_NAME);
     const request = store.delete(id);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export const SerializedJournalEntrySchema = z.object({
+  id: z.string(),
+  content: z.string(),
+  summary: z.string().nullable(),
+  reflectionQuestions: z.array(z.string()).nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const ExportDataSchema = z.object({
+  version: z.literal(1),
+  entries: z.array(SerializedJournalEntrySchema),
+});
+
+export type SerializedJournalEntry = z.infer<typeof SerializedJournalEntrySchema>;
+export type ExportData = z.infer<typeof ExportDataSchema>;
+
+export function serializeEntry(entry: JournalEntry): SerializedJournalEntry {
+  return {
+    ...entry,
+    createdAt: entry.createdAt.toISOString(),
+    updatedAt: entry.updatedAt.toISOString(),
+  };
+}
+
+export function deserializeEntry(entry: SerializedJournalEntry): JournalEntry {
+  return {
+    ...entry,
+    createdAt: new Date(entry.createdAt),
+    updatedAt: new Date(entry.updatedAt),
+  };
+}
+
+export async function exportEntries(): Promise<ExportData> {
+  const entries = await getEntries();
+  return {
+    version: 1,
+    entries: entries.map(serializeEntry),
+  };
+}
+
+export async function importEntries(entries: SerializedJournalEntry[]): Promise<JournalEntry[]> {
+  const db = await dbManager.getConnection();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, "readwrite");
+    const store = transaction.objectStore(STORE_NAME);
+    const importedEntries: JournalEntry[] = [];
+
+    entries.forEach((entry) => {
+      const deserializedEntry = deserializeEntry(entry);
+      const request = store.put(deserializedEntry);
+      request.onsuccess = () => importedEntries.push(deserializedEntry);
+    });
+
+    transaction.oncomplete = () => resolve(importedEntries);
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+export async function importFromFile(data: unknown): Promise<JournalEntry[]> {
+  const parsed = ExportDataSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error(`Invalid import data: ${parsed.error.message}`);
+  }
+  return importEntries(parsed.data.entries);
+}
+
+export async function resetDatabase(): Promise<void> {
+  const db = await dbManager.getConnection();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, "readwrite");
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.clear();
 
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
